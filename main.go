@@ -6,13 +6,19 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 )
 
-const sampleDataPath = "sample"
+const (
+	redisAddr      = "localhost:6379"
+	sampleDataPath = "sample3"
+)
 
 type Indexes struct {
-	Prices     map[string][]string
-	Categories map[string][]string
+	Name        map[string][]string `json:"name"`
+	Description map[string][]string `json:"description"`
+	Price       map[string][]string `json:"price"`
+	Categories  map[string][]string `json:"categories"`
 }
 
 type Product struct {
@@ -24,7 +30,7 @@ type Product struct {
 	Description string   `json:"description"`
 }
 
-func sourceData() ([]Product, error) {
+func sourceData(saveData func(p Product) (bool, error)) ([]Product, error) {
 	var products []Product
 
 	file, err := os.Open(sampleDataPath)
@@ -47,35 +53,15 @@ func sourceData() ([]Product, error) {
 			log.Fatal(err)
 		}
 
+		ok, err := saveData(p)
+		if !ok {
+			log.Fatal(err)
+		}
+
 		products = append(products, p)
 	}
 
 	return products, nil
-}
-
-func generatePriceIndexes(products []Product, indexObj *Indexes) {
-	minRange := 0
-	maxRange := 99
-
-	for _, p := range products {
-		for p.Price > float64(maxRange) {
-			minRange += 100
-			maxRange += 100
-		}
-		priceRange := fmt.Sprintf("%d-%d", minRange, maxRange)
-		indexObj.Prices[priceRange] = append(indexObj.Prices[priceRange], p.ID)
-
-		minRange = 0
-		maxRange = 99
-	}
-}
-
-func generateCategoriesIndexes(products []Product, indexObj *Indexes) {
-	for _, p := range products {
-		for _, c := range p.Categories {
-			indexObj.Categories[c] = append(indexObj.Categories[c], p.ID)
-		}
-	}
 }
 
 func writeResult(indexObj *Indexes) {
@@ -97,21 +83,78 @@ func writeResult(indexObj *Indexes) {
 		fmt.Println("Error writing to file:", err)
 		return
 	}
+
+}
+
+func mountPriceIndex(products []Product, indexObj *Indexes) {
+	minRange := 0
+	maxRange := 99
+
+	for _, p := range products {
+		for p.Price > float64(maxRange) {
+			minRange += 100
+			maxRange += 100
+		}
+		priceRange := fmt.Sprintf("%d-%d", minRange, maxRange)
+		indexObj.Price[priceRange] = append(indexObj.Price[priceRange], p.ID)
+
+		minRange = 0
+		maxRange = 99
+	}
+}
+
+func mountCategoriesIndex(products []Product, indexObj *Indexes) {
+	for _, p := range products {
+		for _, c := range p.Categories {
+			indexObj.Categories[c] = append(indexObj.Categories[c], p.ID)
+		}
+	}
+}
+
+func parseName(name string) []string {
+	return strings.Split(name, " ")
+}
+
+func mountNameIndex(products []Product, indexObj *Indexes) {
+	for _, p := range products {
+		for _, s := range parseName(p.Name) {
+			indexObj.Name[s] = append(indexObj.Name[s], p.ID)
+		}
+	}
+}
+
+func parseDescription(description string) []string {
+	return strings.Split(description, " ")
+}
+
+func mountDescriptionIndex(products []Product, indexObj *Indexes) {
+	for _, p := range products {
+		for _, s := range parseDescription(p.Description) {
+			indexObj.Description[s] = append(indexObj.Description[s], p.ID)
+		}
+	}
 }
 
 func main() {
-	products, err := sourceData()
+	db := NewDB(redisAddr)
+	defer db.close()
+
+	products, err := sourceData(db.saveProduct)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	var indexes = Indexes{
-		Prices:     make(map[string][]string),
-		Categories: make(map[string][]string),
+		Name:        make(map[string][]string),
+		Description: make(map[string][]string),
+		Price:       make(map[string][]string),
+		Categories:  make(map[string][]string),
 	}
 
-	generatePriceIndexes(products, &indexes)
-	generateCategoriesIndexes(products, &indexes)
+	mountNameIndex(products, &indexes)
+	mountDescriptionIndex(products, &indexes)
+	mountPriceIndex(products, &indexes)
+	mountCategoriesIndex(products, &indexes)
 
 	writeResult(&indexes)
 }
