@@ -8,10 +8,6 @@ This project is an attempt to create an search engine, I decide to start by crea
 # setup project
 go mod tidy
 
-# gerate data sample
-
-go run seed/seed.go > sample
-
 # generate indexes
 
 go run main.go

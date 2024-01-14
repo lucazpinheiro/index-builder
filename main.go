@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
 const (
 	redisAddr      = "localhost:6379"
-	sampleDataPath = "sample3"
+	sampleDataPath = "sample"
 )
 
 type Indexes struct {
@@ -135,6 +136,28 @@ func mountDescriptionIndex(products []Product, indexObj *Indexes) {
 	}
 }
 
+func findProductsByPrice(price float64, indexObj *Indexes) []string {
+	minPrice := 0
+	maxPrice := 99
+	priceRange := "0-99"
+
+	for {
+		if price > float64(minPrice) && price <= float64(maxPrice) {
+			break
+		}
+		maxPrice += 100
+		minPrice += 100
+		priceRange = fmt.Sprintf("%d-%d", minPrice, maxPrice)
+	}
+
+	ids, ok := indexObj.Price[priceRange]
+	if !ok {
+		return []string{}
+	}
+
+	return ids
+}
+
 func main() {
 	db := NewDB(redisAddr)
 	defer db.close()
@@ -157,4 +180,40 @@ func main() {
 	mountCategoriesIndex(products, &indexes)
 
 	writeResult(&indexes)
+
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		fmt.Print("Enter Text: ")
+		// reads user input until \n by default
+		scanner.Scan()
+		// Holds the string that was scanned
+		text := scanner.Text()
+		if len(text) != 0 {
+			price, err := strconv.ParseFloat(text, 64)
+			if err != nil {
+				log.Fatal(err)
+			}
+			ids := findProductsByPrice(price, &indexes)
+			if len(ids) == 0 {
+				fmt.Println("No products found")
+			}
+			for _, id := range ids {
+				p, err := db.getProduct(id)
+				if err != nil {
+					log.Fatal(err)
+				}
+				fmt.Println(p.ID, p.Price)
+			}
+		} else {
+			// exit if user entered an empty string
+			break
+		}
+
+	}
+
+	// handle error
+	if scanner.Err() != nil {
+		fmt.Println("Error: ", scanner.Err())
+	}
+
 }
