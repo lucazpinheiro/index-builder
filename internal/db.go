@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"encoding/json"
@@ -20,11 +20,11 @@ func NewDB(redisAddr string) *DB {
 	}
 }
 
-func (db *DB) close() {
+func (db *DB) Close() {
 	db.redisClient.Close()
 }
 
-func (db *DB) saveProduct(p Product) (bool, error) {
+func (db *DB) SaveProduct(p Product) (bool, error) {
 	serializedProduct, err := serialize(p)
 	if err != nil {
 		return false, err
@@ -38,7 +38,7 @@ func (db *DB) saveProduct(p Product) (bool, error) {
 	return true, nil
 }
 
-func (db *DB) getProduct(productID string) (Product, error) {
+func (db *DB) GetProduct(productID string) (Product, error) {
 	val, err := db.redisClient.Get(productID).Result()
 	if err != nil {
 		return Product{}, err
