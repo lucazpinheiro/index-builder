@@ -1,4 +1,4 @@
-module github.com/lucazpinheiro/indexing-system
+module github.com/lucazpinheiro/index-seeker
 
 go 1.19
 

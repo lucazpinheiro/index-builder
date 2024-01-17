@@ -38,7 +38,7 @@ func (db *DB) SaveProduct(p Product) (bool, error) {
 	return true, nil
 }
 
-func (db *DB) GetProduct(productID string) (Product, error) {
+func (db *DB) GetProductByID(productID string) (Product, error) {
 	val, err := db.redisClient.Get(productID).Result()
 	if err != nil {
 		return Product{}, err

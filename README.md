@@ -1,14 +1,38 @@
-## indexes generator
+## what it is
 
-This project is an attempt to create an search engine, I decide to start by creating an indexes generation, this way I will have a very basic searching mechanism. Right now it is a work in progress, but is possible to generate indexes from a fake data set.
+It is an simple application that reads data, creates an index and allows the user to search products. I built with a very basic understanding of how an search engine indexing would work, I ended up researching reading a few things about search engines, indexing strategies and fuzzy string searching etc. And I'm planning to build a more ambitious project on this domain.
 
-### how to use
+## depends on
+
+* [go-redis](https://github.com/redis/go-redis)
+* redis
+* docker
+
+### how to run
 
 ```bash
 # setup project
 go mod tidy
 
-# generate indexes
+# start docker container with redis
+docker compose up -d
 
-go run main.go
+# extract data from sample file and creates index
+go run cmd/main.go
+
+```
+
+### query examples
+```bash
+# by price, returns all products in the price range
+Enter query: price:100
+
+# by name, returns all products with the word in the name
+Enter query: name:Ball
+
+# by name, returns all products with the word in the description
+Enter query: description:Sport
+
+# by id, returns only the searched product
+Enter query: id:3e2ff818-7512-4025-a026-07a1c7583cb1
 ```

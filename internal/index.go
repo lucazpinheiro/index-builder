@@ -25,6 +25,7 @@ func NewIndex() *Index {
 }
 
 func (index *Index) WriteResult() {
+	log.Println("writing index to file")
 	f, err := os.Create("indexes")
 	if err != nil {
 		log.Println(err)

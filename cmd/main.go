@@ -9,53 +9,19 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lucazpinheiro/indexing-system/internal"
+	"github.com/lucazpinheiro/index-seeker/internal"
 )
 
 const (
 	redisAddr      = "localhost:6379"
-	sampleDataPath = "sample"
+	sampleDataPath = "data/sample"
 )
-
-func sourceData(saveData func(p internal.Product) (bool, error)) ([]internal.Product, error) {
-	var products []internal.Product
-
-	file, err := os.Open(sampleDataPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer file.Close()
-
-	fileScanner := bufio.NewScanner(file)
-
-	fileScanner.Split(bufio.ScanLines)
-
-	for fileScanner.Scan() {
-		p := internal.Product{}
-		byt := fileScanner.Bytes()
-
-		err := json.Unmarshal(byt, &p)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		ok, err := saveData(p)
-		if !ok {
-			log.Fatal(err)
-		}
-
-		products = append(products, p)
-	}
-
-	return products, nil
-}
 
 func main() {
 	db := internal.NewDB(redisAddr)
 	defer db.Close()
 
-	products, err := sourceData(db.SaveProduct)
+	products, err := extractData(sampleDataPath, db)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,6 +68,13 @@ func main() {
 			ids = index.FindProductsByCategory(values[1])
 		case "description":
 			ids = index.FindProductsByDescription(values[1])
+		case "id":
+			p, err := db.GetProductByID(values[1])
+			if err != nil {
+				log.Fatal(err)
+			}
+			prettyPrint(&p)
+			continue
 		}
 
 		if len(ids) == 0 {
@@ -109,7 +82,7 @@ func main() {
 		}
 
 		for _, id := range ids {
-			p, err := db.GetProduct(id)
+			p, err := db.GetProductByID(id)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -117,8 +90,49 @@ func main() {
 		}
 	}
 
-	// handle error
 	if scanner.Err() != nil {
 		fmt.Println("Error: ", scanner.Err())
 	}
+}
+
+func prettyPrint(p *internal.Product) {
+	prettyProduct, err := json.MarshalIndent(p, "", "\t")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(string(prettyProduct))
+}
+
+func extractData(sourceData string, destiny *internal.DB) ([]internal.Product, error) {
+	log.Printf("extracting products data, source: %s", sourceData)
+
+	file, err := os.Open(sourceData)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var products []internal.Product
+
+	fileScanner := bufio.NewScanner(file)
+	fileScanner.Split(bufio.ScanLines)
+
+	for fileScanner.Scan() {
+		p := internal.Product{}
+		byt := fileScanner.Bytes()
+
+		err := json.Unmarshal(byt, &p)
+		if err != nil {
+			return nil, err
+		}
+
+		ok, err := destiny.SaveProduct(p)
+		if !ok {
+			return nil, err
+		}
+
+		products = append(products, p)
+	}
+
+	return products, nil
 }
