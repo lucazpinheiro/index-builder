@@ -1,6 +1,6 @@
 ## what it is
 
-It is an simple application that reads data, creates an index and allows the user to search products. I built with a very basic understanding of how an search engine indexing would work, I ended up researching reading a few things about search engines, indexing strategies and fuzzy string searching etc. And I'm planning to build a more ambitious project on this domain.
+It is an simple application that reads data, creates an index and allows the user to search products. I built with a very basic understanding of how an search engine indexing would work, I ended up reading a few things about search engines, indexing strategies and fuzzy string searching etc. And I'm planning to build a more ambitious project on this domain.
 
 ## depends on
 
